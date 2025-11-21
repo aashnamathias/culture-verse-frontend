@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import HeroScreenshotCultureVerseLens from "./pages/HeroScreenshotCultureVerseLens";
+import Result from "./pages/Result"; // <--- IMPORT THIS
 
 const queryClient = new QueryClient();
 
@@ -18,8 +18,8 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/hero" element={<HeroScreenshotCultureVerseLens />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            {/* DYNAMIC RESULT ROUTE */}
+            <Route path="/result/:id" element={<Result />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

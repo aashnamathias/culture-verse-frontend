@@ -5,12 +5,21 @@ import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 // IMPORTS
-import ChannapatnaToy from '../components/ChannapatnaToy';
-import ChannapatnaMaker from '../components/ChannapatnaMaker';
-import WarliArt from '../components/WarliArt';
-import WarliMaker from '../components/WarliMaker';
-import KolamArt from '../components/KolamArt';
-import KolamMaker from '../components/KolamMaker';
+import ChannapatnaToy from '../components/ui/AR/ChannapatnaToy';
+import ChannapatnaMaker from '../components/ui/AR/ChannapatnaMaker';
+import WarliArt from '../components/ui/AR/WarliArt';
+import WarliMaker from '../components/ui/AR/WarliMaker';
+import KolamArt from '../components/ui/AR/KolamArt';
+import KolamMaker from '../components/ui/AR/KolamMaker';
+
+// Make sure you moved these files into the AR folder too! 
+// If they are still in components/, keep the old path for them.
+// import BluePottery from '../components/ui/AR/BluePottery';
+// import BluePotteryMaker from '../components/ui/AR/BluePotteryMaker';
+// import MadhubaniArt from '../components/ui/AR/MadhubaniArt';
+// import MadhubaniMaker from '../components/ui/AR/MadhubaniMaker';
+
+
 
 const Loader = () => (
   <Html center><div className="text-yellow-500 text-xs font-bold animate-pulse">Loading...</div></Html>
