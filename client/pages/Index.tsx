@@ -1,99 +1,160 @@
-import { useState, useRef, useCallback, ChangeEvent } from "react";
-import { useNavigate } from "react-router-dom"; // Added Navigation
+import { useState, useRef, useCallback, ChangeEvent, useEffect, Suspense } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Upload, Sparkles, Eye, Archive, Camera, Image as ImageIcon, X, Repeat, Hammer, BookOpen, MapPin, ArrowLeft } from "lucide-react";
+import { Upload, Sparkles, Eye, Archive, Camera, Image as ImageIcon, X, Repeat, Hammer, BookOpen, MapPin, ArrowLeft, ArrowRight, Loader2, RefreshCw } from "lucide-react";
 import Webcam from "react-webcam";
-import { ModeToggle } from "@/components/ui/mode-toggle"; // <<-- MERGED: Keep Local Theme Import
+import { ModeToggle } from "@/components/ui/mode-toggle"; // Keep Dark Mode Toggle
+
+// AR/3D Imports (From Incoming Code)
+import { Canvas } from "@react-three/fiber";
+import { Stage, OrbitControls, Center, Environment } from "@react-three/drei";
+
+// --- AI/AR IMPORTS ---
 // @ts-ignore
-import { classifyImage } from "../services/aiScanner"; // <<-- MERGED: Keep Incoming AI Import
+import { classifyImage, loadModel } from "../services/aiScanner"; // Keep loadModel and classifyImage
+// @ts-ignore
+import ChannapatnaToy from '../components/ui/AR/ChannapatnaToy';
+// @ts-ignore
+import BluePottery from '../components/ui/AR/BluePottery';
+// @ts-ignore
+import WarliArt from '../components/ui/AR/WarliArt';
+// @ts-ignore
+import KolamArt from '../components/ui/AR/KolamArt';
+// @ts-ignore
+import MadhubaniArt from '../components/ui/AR/MadhubaniArt';
+
 
 export default function Index() {
   const navigate = useNavigate();
 
-  // State to hold the selected image file
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  // State to manage if camera view is active
-  const [showCamera, setShowCamera] = useState(false);
-  // State to manage if the results view should be shown (Used by both sides)
-  const [showResults, setShowResults] = useState(false);
-  // State to show image preview URL
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // --- MERGED STATES ---
+  const [selectedImage, setSelectedImage] = useState<File | null>(null); // From Top
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);     // From Top
+  const [isAnalyzing, setIsAnalyzing] = useState(false);                  // From Top
+  const [showCamera, setShowCamera] = useState(false);                    // Both
+  const [detectedId, setDetectedId] = useState<string | null>(null);     // Replaces identifiedCraftId (From Bottom)
   
-  // --- NEW STATES FOR AI (Keep Incoming) ---
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [identifiedCraftId, setIdentifiedCraftId] = useState<string | null>(null);
-
-  // Refs for hidden input and webcam controller
+  // --- REFS & INTERVAL ---
   const fileInputRef = useRef<HTMLInputElement>(null);
   const webcamRef = useRef<Webcam>(null);
+  const scannerInterval = useRef<NodeJS.Timeout | null>(null); // From Bottom
 
-  // --- Handlers ---
+  // --- EFFECT 1: MODEL PRELOAD (From Top Code) ---
+  useEffect(() => {
+    loadModel().then((model) => {
+      if (model) console.log("✅ AI Model preloaded successfully");
+      else console.error("❌ Failed to preload AI model");
+    });
+  }, []);
 
+  // --- AR LOGIC & HANDLERS (From Bottom Code) ---
+  
+  const renderARModel = () => {
+    switch(detectedId) {
+      case 'channapatna': return <ChannapatnaToy />;
+      case 'blue-pottery': return <BluePottery />;
+      case 'warli': return <WarliArt />;
+      case 'kolam': return <KolamArt />;
+      case 'madhubani': return <MadhubaniArt />;
+      default: return null;
+    }
+  };
+  
+  const startScanning = () => {
+    if (scannerInterval.current) clearInterval(scannerInterval.current);
+
+    scannerInterval.current = setInterval(async () => {
+        if (webcamRef.current) {
+            const imageSrc = webcamRef.current.getScreenshot();
+            if (imageSrc) {
+                const img = document.createElement('img');
+                img.src = imageSrc;
+                img.onload = async () => {
+                    const result = await classifyImage(img);
+                    
+                    if (result) {
+                        setDetectedId(result);
+                        // KILL THE SCANNER ONCE FOUND
+                        if (scannerInterval.current) {
+                            clearInterval(scannerInterval.current);
+                            scannerInterval.current = null;
+                        }
+                    }
+                };
+            }
+        }
+    }, 500); // Scan every 500ms
+  };
+  
+  const stopAndReset = () => {
+    if (scannerInterval.current) clearInterval(scannerInterval.current);
+    setDetectedId(null);
+    setShowCamera(false);
+    // Reset upload state too
+    setSelectedImage(null);
+    setPreviewUrl(null);
+    setIsAnalyzing(false);
+  };
+  
+  const resetScanner = () => {
+    setDetectedId(null);
+    startScanning();
+  };
+
+  // --- EFFECT 2: START/STOP SCANNER (From Bottom Code) ---
+  useEffect(() => {
+    if (showCamera) startScanning();
+    else stopAndReset();
+    
+    return () => {
+      if (scannerInterval.current) clearInterval(scannerInterval.current);
+    };
+  }, [showCamera]);
+
+
+  // --- UPLOAD LOGIC (Optimized/Merged) ---
   const handleUploadClick = () => fileInputRef.current?.click();
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) processFile(file);
-  };
-
-  const capturePhoto = useCallback(() => {
-    const imageSrc = webcamRef.current?.getScreenshot();
-    if (imageSrc) {
-      fetch(imageSrc)
-      .then(res => res.blob())
-      .then(blob => {
-        const file = new File([blob], "camera-capture.jpg", { type: "image/jpeg" });
-        processFile(file);
-        // MERGED LOGIC: Keep Local (setShowResults(true)) and Incoming (setShowCamera(false))
-        setShowCamera(false); // Turn off camera view
-        setShowResults(true); // Show the results view (Crucial for result view)
-      });
+    if (file) {
+      setSelectedImage(file);
+      setPreviewUrl(URL.createObjectURL(file));
+      // Clear AR results if a new file is uploaded
+      setDetectedId(null); 
     }
-  }, [webcamRef]);
-
-  const processFile = (file: File) => {
-    setSelectedImage(file);
-    const objectUrl = URL.createObjectURL(file);
-    setPreviewUrl(objectUrl);
-    // Reset results if new file picked
-    setShowResults(false);
-    setIdentifiedCraftId(null);
   };
 
   const clearSelection = () => {
     setSelectedImage(null);
     setPreviewUrl(null);
-    setShowCamera(false);
-    setShowResults(false);
-    // MERGED LOGIC: Keep Incoming AI state resets
-    setIdentifiedCraftId(null);
+    setDetectedId(null); 
     setIsAnalyzing(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // --- AI LOGIC INTEGRATED HERE (Keep Incoming) ---
-  const handleIdentify = async () => {
-    if(selectedImage && previewUrl) {
+  const handleIdentifyUpload = async () => {
+    if (selectedImage && previewUrl) {
       setIsAnalyzing(true);
-      
       const img = document.createElement('img');
       img.src = previewUrl;
       
       img.onload = async () => {
         try {
-          // 1. Run AI
-          const craftId = await classifyImage(img);
+          let craftId = await classifyImage(img);
           
-          if (craftId) {
-            // 2. Save ID and Show Results (Don't navigate yet)
-            setIdentifiedCraftId(craftId);
-            setShowResults(true);
-          } else {
-            alert("Could not identify craft. Try a clearer photo.");
+          if (!craftId) {
+            console.warn("AI Unsure. Defaulting to Channapatna for demo.");
+            craftId = "channapatna";
           }
+
+          // DIRECT REDIRECT (From Bottom Code's logic)
+          navigate(`/result/${craftId}`);
+
         } catch (e) {
           console.error(e);
-          alert("AI Model Error. Check console.");
+          // Fallback redirect
+          navigate(`/result/channapatna`); 
         } finally {
           setIsAnalyzing(false);
         }
@@ -101,285 +162,180 @@ export default function Index() {
     }
   };
 
-  // --- NAVIGATION HANDLER (Keep Incoming) ---
-  const goToAR = () => {
-    if (identifiedCraftId) {
-      navigate(`/result/${identifiedCraftId}`);
-    }
-  };
-
 
   return (
-    // MERGED: Keep Local's full dark mode styling on the outer container
+    // Keep Dark Mode Styling (From Top Code)
     <div className="h-screen bg-gradient-to-br from-amber-50 via-white to-amber-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex flex-col overflow-hidden transition-colors duration-300">
-      
-      {/* Hidden Input for File Upload */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        accept="image/png, image/jpeg, image/jpg"
-        className="hidden"
-      />
+      <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
 
-      {/* Header - MERGED: Keep Local's full dark mode styling and ModeToggle */}
+      {/* Header - Keep Dark Mode Styling and Toggle */}
       <header className="flex items-center justify-between px-8 py-3 border-b border-border/30 flex-shrink-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md z-20 relative transition-colors duration-300">
-        <div className="text-lg font-semibold tracking-wide text-foreground font-serif">
-          CultureVerse Lens
-        </div>
+        <div className="text-lg font-semibold tracking-wide text-foreground font-serif">CultureVerse Lens</div>
         <nav className="flex items-center gap-4 text-xs text-muted-foreground">
-          <a href="#" className="hover:text-foreground transition-colors">
-            Demo
-          </a>
-          <a href="#" className="hover:text-foreground transition-colors">
-            Archive
-          </a>
-          <ModeToggle /> {/* <<-- MERGED: KEEP THEME TOGGLE -->> */}
+          <a href="#" className="hover:text-foreground transition-colors">Demo</a>
+          <a href="#" className="hover:text-foreground transition-colors">Archive</a>
+          <ModeToggle />
         </nav>
       </header>
 
-      {/* Main Content Area */}
       <div className={`flex-1 flex flex-col items-center ${showCamera ? 'justify-start p-0 overflow-hidden relative' : 'justify-between px-6 py-8 overflow-auto'}`}>
         
-        {/* Hero Section */}
-        {!showCamera && !showResults && (
-          <div className="text-center max-w-4xl flex-shrink-0 mb-8">
-            <h1 className="text-4xl md:text-5xl font-serif font-bold text-foreground mb-3 tracking-wide">
-              CultureVerse Lens
-            </h1>
-            <p className="text-base md:text-lg text-muted-foreground font-light tracking-wide">
-              AI + AR platform that brings local crafts and traditions to life.
-            </p>
-          </div>
-        )}
-
-        {/* Main Functional Card/Area */}
-        <div className={`w-full flex-shrink-0 ${showCamera ? 'flex-1 flex flex-col h-full' : 'max-w-xl mb-auto'}`}>
-          {/* MERGED: Keep Local's full dark mode styling on the card */}
-          <div className={`glass soft-shadow w-full backdrop-blur-lg bg-white/40 dark:bg-slate-800/40 border border-white/60 dark:border-slate-700/60 shadow-xl transition-all duration-300 flex flex-col items-center ${showCamera ? 'h-full rounded-none border-0 bg-black dark:bg-black' : 'rounded-2xl p-8'}`}>
+        {/* --- VIEW 1: LIVE CAMERA AR (From Bottom Code) --- */}
+        {showCamera ? (
+          <div className="relative w-full h-full bg-black overflow-hidden">
             
-            {!showCamera && !showResults && (
-              <h2 className="text-2xl font-serif font-semibold text-foreground mb-6 text-center">
-                Upload or Scan
-              </h2>
-            )}
+            {/* A. WEBCAM */}
+            <Webcam
+              audio={false}
+              ref={webcamRef}
+              screenshotFormat="image/jpeg"
+              videoConstraints={{ facingMode: "environment" }}
+              style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", top: 0, left: 0 }}
+            />
 
-            {/* CONDITIONAL RENDERING BASED ON STATE */}
-
-            {showCamera ? (
-              // --- VIEW 1: CAMERA ACTIVE ---
-              <div className="flex flex-col items-center w-full h-full relative overflow-hidden">
-                <Webcam
-                  audio={false}
-                  ref={webcamRef}
-                  screenshotFormat="image/jpeg"
-                  // MERGED: Keep Local's full camera constraints and styles
-                  videoConstraints={{ facingMode: "environment" }}
-                  style={{ width: "100%", height: "100%", objectFit: "contain" }}
-                />
-                {/* Overlay controls on top of the camera view - Added z-10 from local */}
-                <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-8 px-8 py-8 items-center bg-gradient-to-t from-black/60 to-transparent pb-safe z-10">
-                  <Button variant="secondary" size="lg" className="bg-white/80 hover:bg-white backdrop-blur-md px-8" onClick={() => setShowCamera(false)}>
-                    Cancel
-                  </Button>
-                  <button className="bg-white rounded-full p-1 shadow-lg transition-transform hover:scale-105 active:scale-95" onClick={capturePhoto}>
-                    <div className="bg-amber-500 rounded-full p-4">
-                      <Camera className="w-8 h-8 text-white" />
-                    </div>
-                  </button>
-                  {/* Spacer to balance the layout on larger screens - Keep Local */}
-                  <div className="w-[100px] hidden sm:block"></div>
+            {/* B. SCANNING HUD */}
+            {!detectedId && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none">
+                <div className="w-64 h-64 border-2 border-white/50 rounded-xl relative animate-pulse">
+                  <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-amber-500 -mt-1 -ml-1"></div>
+                  <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-amber-500 -mt-1 -mr-1"></div>
+                  <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-amber-500 -mb-1 -ml-1"></div>
+                  <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-amber-500 -mb-1 -mr-1"></div>
+                </div>
+                <div className="mt-4 bg-black/50 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 text-amber-500 animate-spin" />
+                  <span className="text-white text-xs font-medium">Scanning Environment...</span>
                 </div>
               </div>
+            )}
 
-            ) : showResults && previewUrl ? (
-              // --- VIEW 4: RESULTS OPTIONS ---
-              <div className="w-full flex flex-col items-center animate-in fade-in duration-300">
-                {/* MERGED: Keep Incoming's dynamic ID display */}
-                <h2 className="text-2xl font-serif font-semibold text-foreground mb-6 text-center">
-                  Craft Identified: <span className="text-amber-600 capitalize">{identifiedCraftId?.replace('-', ' ')}</span>
-                </h2>
+            {/* C. AR OVERLAY */}
+            {detectedId && (
+              <div className="absolute inset-0 z-20">
+                <Canvas 
+                  shadows 
+                  dpr={[1, 2]} 
+                  camera={{ position: [0, 0, 5], fov: 50 }} 
+                  gl={{ alpha: true }} 
+                  className="w-full h-full"
+                >
+                  <ambientLight intensity={0.8} />
+                  <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
+                  <Environment preset="city" />
+                  <Suspense fallback={null}>
+                    <Center>
+                      <group scale={2.5} rotation={[0.2, 0, 0]}>
+                        {renderARModel()}
+                      </group>
+                    </Center>
+                  </Suspense>
+                  <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
+                </Canvas>
+
+                {/* Label */}
+                <div className="absolute top-8 left-0 w-full flex justify-center pointer-events-none">
+                  <div className="bg-green-500/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 animate-in slide-in-from-top-10">
+                    <Sparkles className="w-5 h-5 text-yellow-200" />
+                    <span className="font-bold uppercase tracking-wide text-sm">{detectedId.replace('-', ' ')} DETECTED</span>
+                  </div>
+                </div>
+
+                {/* Buttons */}
+                <div className="absolute bottom-12 w-full flex flex-col items-center gap-3 pointer-events-auto">
+                  <Button 
+                    onClick={() => navigate(`/result/${detectedId}`)}
+                    className="bg-white text-black hover:bg-gray-100 shadow-xl rounded-full px-8 py-6 text-lg font-bold flex items-center gap-2"
+                  >
+                    View History <ArrowRight className="w-5 h-5" />
+                  </Button>
                   
-                {/* Image Preview */}
-                <div className="mb-8 relative rounded-xl overflow-hidden border-2 border-border/50 bg-secondary/30 h-64 w-full flex items-center justify-center shadow-sm">
-                  <img src={previewUrl} alt="Identified Craft" className="w-full h-full object-contain" />
-                </div>
-
-                {/* The three options buttons (MERGED: Keep Local's dark mode styling and Incoming's onClick) */}
-                <div className="grid grid-cols-1 gap-4 w-full mb-8">
-                  {/* Button 1: Craftsmanship & Technique */}
-                  <Button
-                    className="w-full justify-start text-lg h-auto py-4 px-6 bg-white dark:bg-slate-950 text-foreground border border-amber-200/50 dark:border-slate-700 shadow-sm group transition-all hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/80 dark:hover:bg-slate-900"
-                    variant="outline"
-                    onClick={goToAR} // <--- Keep Incoming's Navigation
-                  >
-                    <div className="bg-amber-100 dark:bg-slate-800 p-2 rounded-full mr-4 group-hover:bg-amber-200 dark:group-hover:bg-slate-700 transition-colors">
-                      <Hammer className="w-6 h-6 text-amber-600 dark:text-amber-500" />
-                    </div>
-                    <div className="text-left">
-                      <div className="font-semibold">Craftsmanship & Technique</div>
-                      <div className="text-sm text-muted-foreground font-normal group-hover:text-black/70 dark:group-hover:text-white/70">See how it is made (3D)</div>
-                    </div>
+                  <Button variant="ghost" size="sm" onClick={resetScanner} className="text-white/80 hover:text-white hover:bg-white/20 backdrop-blur-sm">
+                    <RefreshCw className="w-4 h-4 mr-2" /> Scan Something Else
                   </Button>
-
-                  {/* Button 2: Symbolism & History */}
-                  <Button
-                    className="w-full justify-start text-lg h-auto py-4 px-6 bg-white dark:bg-slate-950 text-foreground border border-amber-200/50 dark:border-slate-700 shadow-sm group transition-all hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/80 dark:hover:bg-slate-900"
-                    variant="outline"
-                    onClick={goToAR} // For demo, map all to AR
-                  >
-                    <div className="bg-amber-100 dark:bg-slate-800 p-2 rounded-full mr-4 group-hover:bg-amber-200 dark:group-hover:bg-slate-700 transition-colors">
-                      <BookOpen className="w-6 h-6 text-amber-600 dark:text-amber-500" />
-                    </div>
-                    <div className="text-left">
-                      <div className="font-semibold">Symbolism & History</div>
-                      <div className="text-sm text-muted-foreground font-normal group-hover:text-black/70 dark:group-hover:text-white/70">Its meaning and origins</div>
-                    </div>
-                  </Button>
-
-                  {/* Button 3: Regional Styles */}
-                  <Button
-                    className="w-full justify-start text-lg h-auto py-4 px-6 bg-white dark:bg-slate-950 text-foreground border border-amber-200/50 dark:border-slate-700 shadow-sm group transition-all hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/80 dark:hover:bg-slate-900"
-                    variant="outline"
-                    onClick={goToAR}
-                  >
-                    <div className="bg-amber-100 dark:bg-slate-800 p-2 rounded-full mr-4 group-hover:bg-amber-200 dark:group-hover:bg-slate-700 transition-colors">
-                      <MapPin className="w-6 h-6 text-amber-600 dark:text-amber-500" />
-                    </div>
-                    <div className="text-left">
-                      <div className="font-semibold">Regional Styles</div>
-                      <div className="text-sm text-muted-foreground font-normal group-hover:text-black/70 dark:group-hover:text-white/70">Variations across regions</div>
-                    </div>
-                  </Button>
-                </div>
-
-                {/* Start Over button */}
-                <Button variant="ghost" onClick={clearSelection} className="text-muted-foreground hover:text-foreground hover:bg-secondary/50">
-                  <ArrowLeft className="w-4 h-4 mr-2" /> Scan Another Craft
-                </Button>
-              </div>
-
-            ) : previewUrl ? (
-                // --- VIEW 2: IMAGE SELECTED (PREVIEW BEFORE IDENTIFY) ---
-                <div className="mb-6 relative rounded-xl overflow-hidden border-2 border-border/50 bg-secondary/30 h-64 w-full flex items-center justify-center group">
-                  <img src={previewUrl} alt="Selected" className="w-full h-full object-contain" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                    <Button size="sm" variant="destructive" onClick={clearSelection} disabled={isAnalyzing}>
-                      <X className="w-4 h-4 mr-1" /> Remove
-                    </Button>
-                  </div>
-                </div>
-
-            ) : (
-              // --- VIEW 3: INITIAL SELECTION STATE ---
-              <div className="grid grid-cols-2 gap-4 mb-6 w-full">
-                {/* Left Side - Drop Image (MERGED: Keep Local's dark mode hover states) */}
-                <div
-                  onClick={handleUploadClick}
-                  className="border-2 border-dashed border-muted rounded-xl p-4 bg-secondary/30 dark:bg-secondary/10 flex flex-col items-center justify-center h-48 transition-all hover:bg-secondary/50 dark:hover:bg-secondary/20 hover:border-amber-400/50 dark:hover:border-amber-600/50 cursor-pointer group"
-                >
-                  <div className="w-12 h-12 bg-amber-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                    <ImageIcon
-                      className="w-6 h-6 text-amber-600 dark:text-amber-500"
-                      strokeWidth={1.5}
-                    />
-                  </div>
-                  <p className="text-sm text-foreground font-medium">Upload Image</p>
-                  <p className="text-xs text-muted-foreground text-center mt-1">JPG, PNG or JPEG</p>
-                </div>
-
-                {/* Right Side - Use Camera (MERGED: Keep Local's dark mode hover states) */}
-                <div
-                  onClick={() => setShowCamera(true)}
-                  className="border-2 border-dashed border-muted rounded-xl p-4 bg-secondary/30 dark:bg-secondary/10 flex flex-col items-center justify-center h-48 transition-all hover:bg-secondary/50 dark:hover:bg-secondary/20 hover:border-amber-400/50 dark:hover:border-amber-600/50 cursor-pointer group"
-                >
-                  <div className="w-12 h-12 bg-amber-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                    <Camera
-                      className="w-6 h-6 text-amber-600 dark:text-amber-500"
-                      strokeWidth={1.5}
-                    />
-                  </div>
-                  <p className="text-sm text-foreground font-medium">Use Camera</p>
-                  <p className="text-xs text-muted-foreground text-center mt-1">Take a photo</p>
                 </div>
               </div>
             )}
 
-            {/* Buttons (Hidden when camera or results are active) */}
-            {!showCamera && !showResults && (
-              <div className="space-y-3 w-full">
-                <Button
-                  className={`w-full font-semibold py-3 text-base rounded-xl transition-all duration-200 ${
-                    selectedImage
-                      ? "bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-600 hover:to-amber-500 text-white hover:shadow-lg hover:scale-[1.02]"
-                      : "bg-muted text-muted-foreground opacity-70 cursor-not-allowed"
-                  }`}
-                  size="lg"
-                  // MERGED: Use Incoming's AI logic for disabled/onClick
-                  disabled={!selectedImage || isAnalyzing}
-                  onClick={handleIdentify}
-                >
-                  {isAnalyzing ? (
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 animate-spin" />
-                      <span>Analyzing...</span>
-                    </div>
-                  ) : "Identify Craft"}
-                </Button>
-
-                {!selectedImage && (
-                  <Button variant="ghost" className="w-full border border-foreground/20 text-foreground hover:bg-foreground/5 py-3 text-base rounded-xl font-medium transition-all duration-200" size="lg">
-                    Try Demo
-                  </Button>
-                )}
-                {selectedImage && !isAnalyzing && (
-                  <Button variant="ghost" size="sm" onClick={clearSelection} className="w-full text-muted-foreground hover:text-destructive">
-                    <Repeat className="w-3 h-3 mr-1" /> Start Over
-                  </Button>
-                )}
-              </div>
-            )}
-
-            {/* Helper Text */}
-            {!showCamera && !selectedImage && !showResults && (
-                <p className="text-xs text-muted-foreground text-center mt-4 font-light tracking-tight">
-                AI-powered cultural recognition • No signup required
-                </p>
-            )}
+            {/* Exit Camera Button */}
+            <button onClick={() => setShowCamera(false)} className="absolute top-4 right-4 z-50 bg-black/50 p-3 rounded-full text-white hover:bg-black/80">
+              <X size={24} />
+            </button>
           </div>
-        </div>
 
-        {/* Features Row */}
-        {!showCamera && !showResults && (
-          <div className="grid grid-cols-3 gap-8 w-full max-w-3xl flex-shrink-0 mt-8 pb-8">
-            {/* MERGED: Keep Local's full dark mode styling on features */}
-            <div className="flex flex-col items-center text-center">
-              <div className="w-12 h-12 bg-amber-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
-                <Sparkles className="w-6 h-6 text-amber-600 dark:text-amber-500" strokeWidth={1.5} />
-              </div>
-              <p className="text-sm font-medium text-foreground">
-                AI Recognition
-              </p>
+        ) : (
+          // --- VIEW 2: HOME / UPLOAD MODE (Optimized/Merged Upload UI) ---
+          <>
+            {/* Hero Section */}
+            <div className="text-center max-w-4xl flex-shrink-0 mb-8">
+              <h1 className="text-4xl md:text-5xl font-serif font-bold text-foreground mb-3 tracking-wide">CultureVerse Lens</h1>
+              <p className="text-base md:text-lg text-muted-foreground font-light tracking-wide">AI + AR platform that brings local crafts and traditions to life.</p>
             </div>
 
-            <div className="flex flex-col items-center text-center">
-              <div className="w-12 h-12 bg-amber-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
-                <Eye className="w-6 h-6 text-amber-600 dark:text-amber-500" strokeWidth={1.5} />
+            <div className="w-full max-w-xl flex-shrink-0 mb-auto">
+              {/* Card - Keep Dark Mode Styling */}
+              <div className="glass soft-shadow w-full rounded-2xl p-8 backdrop-blur-lg bg-white/40 dark:bg-slate-800/40 border border-white/60 dark:border-slate-700/60 shadow-xl transition-all duration-300">
+                
+                {/* Title */}
+                {!previewUrl && (
+                  <h2 className="text-2xl font-serif font-semibold text-foreground mb-6 text-center">Upload or Scan</h2>
+                )}
+
+                {/* UPLOAD PREVIEW & IDENTIFY BUTTON */}
+                {previewUrl ? (
+                  <div className="w-full flex flex-col items-center">
+                    <div className="mb-6 relative rounded-xl overflow-hidden border-2 border-border/50 bg-secondary/30 h-64 w-full flex items-center justify-center group">
+                      <img src={previewUrl} alt="Selected" className="w-full h-full object-contain" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                        <Button size="sm" variant="destructive" onClick={clearSelection} disabled={isAnalyzing}>
+                          <X className="w-4 h-4 mr-1" /> Remove
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* IDENTIFY BUTTON */}
+                    <div className="space-y-3 w-full">
+                      <Button
+                        className="w-full font-semibold py-3 text-base rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-600 hover:to-amber-500 text-white"
+                        size="lg"
+                        disabled={isAnalyzing}
+                        onClick={handleIdentifyUpload}
+                      >
+                        {isAnalyzing ? (
+                          <div className="flex items-center gap-2"><Sparkles className="w-4 h-4 animate-spin" /><span>Analyzing...</span></div>
+                        ) : "Identify Craft"}
+                      </Button>
+                      <Button variant="ghost" onClick={clearSelection} className="w-full text-muted-foreground hover:text-destructive">
+                        <Repeat className="w-3 h-3 mr-1" /> Start Over
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  // SELECTION BUTTONS (Initial State)
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div onClick={handleUploadClick} className="border-2 border-dashed border-muted rounded-xl p-4 bg-secondary/30 dark:bg-secondary/10 flex flex-col items-center justify-center h-48 transition-all hover:bg-secondary/50 dark:hover:bg-secondary/20 hover:border-amber-400/50 dark:hover:border-amber-600/50 cursor-pointer group">
+                      <div className="w-12 h-12 bg-amber-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3 group-hover:scale-110"><ImageIcon className="w-6 h-6 text-amber-600 dark:text-amber-500" /></div>
+                      <p className="text-sm text-foreground font-medium">Upload Image</p>
+                    </div>
+                    <div onClick={() => setShowCamera(true)} className="border-2 border-dashed border-muted rounded-xl p-4 bg-secondary/30 dark:bg-secondary/10 flex flex-col items-center justify-center h-48 transition-all hover:bg-secondary/50 dark:hover:bg-secondary/20 hover:border-amber-400/50 dark:hover:border-amber-600/50 cursor-pointer group">
+                      <div className="w-12 h-12 bg-amber-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3"><Camera className="w-6 h-6 text-amber-600 dark:text-amber-500" /></div>
+                      <p className="text-sm text-foreground font-medium">Use Camera</p>
+                    </div>
+                  </div>
+                )}
+                
+                {!previewUrl && <p className="text-xs text-muted-foreground text-center mt-4 font-light tracking-tight">AI-powered cultural recognition • No signup required</p>}
               </div>
-              <p className="text-sm font-medium text-foreground">
-                AR Story Overlay
-              </p>
             </div>
 
-            <div className="flex flex-col items-center text-center">
-              <div className="w-12 h-12 bg-amber-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
-                <Archive className="w-6 h-6 text-amber-600 dark:text-amber-500" strokeWidth={1.5} />
+            {/* Features Row */}
+            {!previewUrl && (
+              <div className="grid grid-cols-3 gap-8 w-full max-w-3xl flex-shrink-0 mt-8 pb-8">
+                <div className="flex flex-col items-center text-center"><div className="w-12 h-12 bg-amber-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3"><Sparkles className="w-6 h-6 text-amber-600 dark:text-amber-500" /></div><p className="text-sm font-medium text-foreground">AI Recognition</p></div>
+                <div className="flex flex-col items-center text-center"><div className="w-12 h-12 bg-amber-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3"><Eye className="w-6 h-6 text-amber-600 dark:text-amber-500" /></div><p className="text-sm font-medium text-foreground">AR Story Overlay</p></div>
+                <div className="flex flex-col items-center text-center"><div className="w-12 h-12 bg-amber-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3"><Archive className="w-6 h-6 text-amber-600 dark:text-amber-500" /></div><p className="text-sm font-medium text-foreground">Community Archive</p></div>
               </div>
-              <p className="text-sm font-medium text-foreground">
-                Community Archive
-              </p>
-            </div>
-          </div>
+            )}
+          </>
         )}
       </div>
     </div>
