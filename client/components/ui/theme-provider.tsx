@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react"
+import * as React from "react" // Ensure React is imported if needed for React.ReactNode
 
 type Theme = "dark" | "light" | "system"
 
@@ -33,7 +34,8 @@ export function ThemeProvider({
     const root = window.document.documentElement
 
     root.classList.remove("light", "dark")
-
+    
+    // Logic for 'system' theme detection
     if (theme === "system") {
       const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
         .matches
@@ -44,6 +46,7 @@ export function ThemeProvider({
       return
     }
 
+    // Apply the chosen theme class
     root.classList.add(theme)
   }, [theme])
 
@@ -56,6 +59,7 @@ export function ThemeProvider({
   }
 
   return (
+    // FIX: Removed redundant {...value} spread operator
     <ThemeProviderContext.Provider value={value}>
       {children}
     </ThemeProviderContext.Provider>

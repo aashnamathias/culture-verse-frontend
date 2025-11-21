@@ -65,38 +65,38 @@
 
   /* Replace it with this new block for Amber Dark Mode */
   .dark {
-    /* Dark Mode - Deep Slate with Amber accents */
-    --background: 222.2 84% 4.9%; /* Deep slate black */
-    --foreground: 210 40% 98%; /* Light text */
- 
+    --background: 222.2 84% 4.9%; 
+    --foreground: 210 40% 98%; 
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
- 
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
- 
-    --primary: 35 92% 50%; /* Keep Amber primary */
+    --primary: 35 92% 50%; 
     --primary-foreground: 210 40% 98%;
- 
-    --secondary: 217.2 32.6% 17.5%; /* Dark slate secondary */
+    --secondary: 217.2 32.6% 17.5%; 
     --secondary-foreground: 210 40% 98%;
- 
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
- 
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
- 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
- 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 35 92% 50%; /* Amber ring */
-    
+    --ring: 35 92% 50%; 
     --gold: 37 92% 50%;
     --gold-light: 45 100% 65%;
     --gold-dark: 32 90% 45%;
+
+    /* Sidebar DARK MODE variables (COMPLETE) */
+    --sidebar-background: 222.2 84% 4.9%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 35 92% 50%;
+    --sidebar-primary-foreground: 222.2 84% 4.9%;
+    --sidebar-accent: 217.2 32.6% 17.5%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217.2 32.6% 17.5%;
+    --sidebar-ring: 35 92% 50%;
   }
 }
 
