@@ -3,28 +3,30 @@ import * as tmImage from '@teachablemachine/image';
 
 let model: any = null;
 
+// 1. Load the Model (Cached)
 export const loadModel = async () => {
   if (model) return model;
 
   try {
-    // This looks for the public folder at root
     const modelURL = "/model/model.json";
     const metadataURL = "/model/metadata.json";
 
-    console.log("Loading model...");
+    console.log("Loading AI Model...");
     model = await tmImage.load(modelURL, metadataURL);
-    console.log("✅ AI Model Loaded");
+    console.log("✅ AI Model Ready");
     return model;
   } catch (err) {
-    console.error("❌ Failed to load model. Did you npm install @teachablemachine/image?", err);
+    console.error("❌ Failed to load model:", err);
     return null;
   }
 };
 
+// 2. Predict Image
 export const classifyImage = async (imageElement: HTMLImageElement) => {
   if (!model) await loadModel();
-  if (!model) return null; // Logic fails safely if model missing
+  if (!model) return null;
 
+  // Run prediction
   const prediction = await model.predict(imageElement);
 
   let highestProb = 0;
@@ -37,16 +39,20 @@ export const classifyImage = async (imageElement: HTMLImageElement) => {
     }
   });
 
-  console.log(`AI Predicted: ${bestLabel}`);
+  // Log for debugging (Press F12 to see confidence)
+  console.log(`AI sees: ${bestLabel} (${(highestProb * 100).toFixed(0)}%)`);
 
-  // Map exact Teachable Machine labels to your Route IDs
+  // THRESHOLD: Accept match if > 45% confidence (Faster detection)
+  if (highestProb < 0.60) return null;
+
+  // Map exact labels from Teachable Machine to App IDs
   switch (bestLabel) {
     case "Channapatna Toys": return "channapatna";
     case "Jaipur Blue Pottery": return "blue-pottery";
     case "Warli Art": return "warli";
     case "Kolam Art": return "kolam";
     case "Madhubani Art": return "madhubani";
-    case "Background": return null;
-    default: return "channapatna"; // Fallback for demo purposes
+    case "Background": return null; 
+    default: return null;
   }
 };
