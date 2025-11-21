@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, Sparkles, Eye, Archive, Camera, Image as ImageIcon, X, Repeat, Hammer, BookOpen, MapPin, ArrowLeft } from "lucide-react";
 import Webcam from "react-webcam";
+import { ModeToggle } from "@/components/ui/mode-toggle";
 
 export default function Index() {
   // State to hold the selected image file
@@ -69,8 +70,8 @@ export default function Index() {
 
 
   return (
-    // Outer container is h-screen (100vh)
-    <div className="h-screen bg-gradient-to-br from-amber-50 via-white to-amber-50 flex flex-col overflow-hidden">
+    // Outer container is h-screen (100vh) with dark mode background support
+    <div className="h-screen bg-gradient-to-br from-amber-50 via-white to-amber-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex flex-col overflow-hidden transition-colors duration-300">
       {/* Hidden Input for File Upload */}
       <input
         type="file"
@@ -80,18 +81,19 @@ export default function Index() {
         className="hidden"
       />
 
-      {/* Header - ALWAYS VISIBLE acted as top boundary */}
-      <header className="flex items-center justify-between px-8 py-3 border-b border-border/30 flex-shrink-0 bg-white/50 backdrop-blur-md z-20 relative">
+      {/* Header - ALWAYS VISIBLE, with dark mode styles and Toggle */}
+      <header className="flex items-center justify-between px-8 py-3 border-b border-border/30 flex-shrink-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md z-20 relative transition-colors duration-300">
         <div className="text-lg font-semibold tracking-wide text-foreground font-serif">
           CultureVerse Lens
         </div>
-        <nav className="flex items-center gap-6 text-xs text-muted-foreground">
+        <nav className="flex items-center gap-4 text-xs text-muted-foreground">
           <a href="#" className="hover:text-foreground transition-colors">
             Demo
           </a>
           <a href="#" className="hover:text-foreground transition-colors">
             Archive
           </a>
+          <ModeToggle />
         </nav>
       </header>
 
@@ -111,8 +113,8 @@ export default function Index() {
 
         {/* Main Functional Card/Area */}
         <div className={`w-full flex-shrink-0 ${showCamera ? 'flex-1 flex flex-col h-full' : 'max-w-xl mb-auto'}`}>
-          {/* The Card itself. When camera is on, it fills the space */}
-          <div className={`glass soft-shadow w-full backdrop-blur-lg bg-white/40 border border-white/60 shadow-xl transition-all duration-300 flex flex-col items-center ${showCamera ? 'h-full rounded-none border-0 bg-black' : 'rounded-2xl p-8'}`}>
+          {/* The Card itself. With dark mode styles */}
+          <div className={`glass soft-shadow w-full backdrop-blur-lg bg-white/40 dark:bg-slate-800/40 border border-white/60 dark:border-slate-700/60 shadow-xl transition-all duration-300 flex flex-col items-center ${showCamera ? 'h-full rounded-none border-0 bg-black dark:bg-black' : 'rounded-2xl p-8'}`}>
             {/* Hide title when camera or results are active */}
             {!showCamera && !showResults && (
               <h2 className="text-2xl font-serif font-semibold text-foreground mb-6 text-center">
@@ -160,47 +162,47 @@ export default function Index() {
                       <img src={previewUrl} alt="Identified Craft" className="w-full h-full object-contain" />
                   </div>
 
-                  {/* The three new options */}
+                  {/* The three new options with dark mode styling */}
                   <div className="grid grid-cols-1 gap-4 w-full mb-8">
                       {/* Button 1: Craftsmanship & Technique */}
                       <Button
-                        className="w-full justify-start text-lg h-auto py-4 px-6 bg-white text-foreground border border-amber-200/50 shadow-sm group transition-all hover:shadow-md hover:border-amber-300 hover:bg-amber-50/80 hover:text-black"
+                        className="w-full justify-start text-lg h-auto py-4 px-6 bg-white dark:bg-slate-950 text-foreground border border-amber-200/50 dark:border-slate-700 shadow-sm group transition-all hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/80 dark:hover:bg-slate-900"
                         variant="outline"
                       >
-                          <div className="bg-amber-100 p-2 rounded-full mr-4 group-hover:bg-amber-200 transition-colors">
-                            <Hammer className="w-6 h-6 text-amber-600" />
+                          <div className="bg-amber-100 dark:bg-slate-800 p-2 rounded-full mr-4 group-hover:bg-amber-200 dark:group-hover:bg-slate-700 transition-colors">
+                            <Hammer className="w-6 h-6 text-amber-600 dark:text-amber-500" />
                           </div>
                           <div className="text-left">
                             <div className="font-semibold">Craftsmanship & Technique</div>
-                            <div className="text-sm text-muted-foreground font-normal group-hover:text-black/70">How it is made</div>
+                            <div className="text-sm text-muted-foreground font-normal group-hover:text-black/70 dark:group-hover:text-white/70">How it is made</div>
                           </div>
                       </Button>
 
                       {/* Button 2: Symbolism & History */}
                       <Button
-                        className="w-full justify-start text-lg h-auto py-4 px-6 bg-white text-foreground border border-amber-200/50 shadow-sm group transition-all hover:shadow-md hover:border-amber-300 hover:bg-amber-50/80 hover:text-black"
+                        className="w-full justify-start text-lg h-auto py-4 px-6 bg-white dark:bg-slate-950 text-foreground border border-amber-200/50 dark:border-slate-700 shadow-sm group transition-all hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/80 dark:hover:bg-slate-900"
                         variant="outline"
                       >
-                          <div className="bg-amber-100 p-2 rounded-full mr-4 group-hover:bg-amber-200 transition-colors">
-                            <BookOpen className="w-6 h-6 text-amber-600" />
+                          <div className="bg-amber-100 dark:bg-slate-800 p-2 rounded-full mr-4 group-hover:bg-amber-200 dark:group-hover:bg-slate-700 transition-colors">
+                            <BookOpen className="w-6 h-6 text-amber-600 dark:text-amber-500" />
                           </div>
                           <div className="text-left">
                             <div className="font-semibold">Symbolism & History</div>
-                            <div className="text-sm text-muted-foreground font-normal group-hover:text-black/70">Its meaning and origins</div>
+                            <div className="text-sm text-muted-foreground font-normal group-hover:text-black/70 dark:group-hover:text-white/70">Its meaning and origins</div>
                           </div>
                       </Button>
 
                       {/* Button 3: Regional Styles */}
                       <Button
-                        className="w-full justify-start text-lg h-auto py-4 px-6 bg-white text-foreground border border-amber-200/50 shadow-sm group transition-all hover:shadow-md hover:border-amber-300 hover:bg-amber-50/80 hover:text-black"
+                        className="w-full justify-start text-lg h-auto py-4 px-6 bg-white dark:bg-slate-950 text-foreground border border-amber-200/50 dark:border-slate-700 shadow-sm group transition-all hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/80 dark:hover:bg-slate-900"
                         variant="outline"
                       >
-                          <div className="bg-amber-100 p-2 rounded-full mr-4 group-hover:bg-amber-200 transition-colors">
-                            <MapPin className="w-6 h-6 text-amber-600" />
+                          <div className="bg-amber-100 dark:bg-slate-800 p-2 rounded-full mr-4 group-hover:bg-amber-200 dark:group-hover:bg-slate-700 transition-colors">
+                            <MapPin className="w-6 h-6 text-amber-600 dark:text-amber-500" />
                           </div>
                           <div className="text-left">
                             <div className="font-semibold">Regional Styles</div>
-                            <div className="text-sm text-muted-foreground font-normal group-hover:text-black/70">Variations across regions</div>
+                            <div className="text-sm text-muted-foreground font-normal group-hover:text-black/70 dark:group-hover:text-white/70">Variations across regions</div>
                           </div>
                       </Button>
                   </div>
@@ -227,13 +229,14 @@ export default function Index() {
               // --- VIEW 3: INITIAL SELECTION STATE ---
               <div className="grid grid-cols-2 gap-4 mb-6 w-full">
                 {/* Left Side - Drop Image */}
+                {/* Added dark mode hover states */}
                 <div
                   onClick={handleUploadClick}
-                  className="border-2 border-dashed border-muted rounded-xl p-4 bg-secondary/30 flex flex-col items-center justify-center h-48 transition-all hover:bg-secondary/50 hover:border-amber-400/50 cursor-pointer group"
+                  className="border-2 border-dashed border-muted rounded-xl p-4 bg-secondary/30 dark:bg-secondary/10 flex flex-col items-center justify-center h-48 transition-all hover:bg-secondary/50 dark:hover:bg-secondary/20 hover:border-amber-400/50 dark:hover:border-amber-600/50 cursor-pointer group"
                 >
-                  <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <div className="w-12 h-12 bg-amber-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                     <ImageIcon
-                      className="w-6 h-6 text-amber-600"
+                      className="w-6 h-6 text-amber-600 dark:text-amber-500"
                       strokeWidth={1.5}
                     />
                   </div>
@@ -246,13 +249,14 @@ export default function Index() {
                 </div>
 
                 {/* Right Side - Use Camera */}
+                 {/* Added dark mode hover states */}
                 <div
                   onClick={() => setShowCamera(true)}
-                  className="border-2 border-dashed border-muted rounded-xl p-4 bg-secondary/30 flex flex-col items-center justify-center h-48 transition-all hover:bg-secondary/50 hover:border-amber-400/50 cursor-pointer group"
+                  className="border-2 border-dashed border-muted rounded-xl p-4 bg-secondary/30 dark:bg-secondary/10 flex flex-col items-center justify-center h-48 transition-all hover:bg-secondary/50 dark:hover:bg-secondary/20 hover:border-amber-400/50 dark:hover:border-amber-600/50 cursor-pointer group"
                 >
-                  <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <div className="w-12 h-12 bg-amber-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                     <Camera
-                      className="w-6 h-6 text-amber-600"
+                      className="w-6 h-6 text-amber-600 dark:text-amber-500"
                       strokeWidth={1.5}
                     />
                   </div>
@@ -305,7 +309,7 @@ export default function Index() {
               </div>
             )}
 
-            {/* Helper Text (Hidden when camera or results are active) */}
+            {/* Helper Text */}
             {!showCamera && !selectedImage && !showResults && (
                 <p className="text-xs text-muted-foreground text-center mt-4 font-light tracking-tight">
                 AI-powered cultural recognition • No signup required
@@ -314,13 +318,13 @@ export default function Index() {
           </div>
         </div>
 
-        {/* Features Row (Hidden when camera or results are active) */}
+        {/* Features Row */}
         {!showCamera && !showResults && (
           <div className="grid grid-cols-3 gap-8 w-full max-w-3xl flex-shrink-0 mt-8 pb-8">
             {/* Feature 1 */}
             <div className="flex flex-col items-center text-center">
-              <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mb-3">
-                <Sparkles className="w-6 h-6 text-amber-600" strokeWidth={1.5} />
+              <div className="w-12 h-12 bg-amber-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
+                <Sparkles className="w-6 h-6 text-amber-600 dark:text-amber-500" strokeWidth={1.5} />
               </div>
               <p className="text-sm font-medium text-foreground">
                 AI Recognition
@@ -329,8 +333,8 @@ export default function Index() {
 
             {/* Feature 2 */}
             <div className="flex flex-col items-center text-center">
-              <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mb-3">
-                <Eye className="w-6 h-6 text-amber-600" strokeWidth={1.5} />
+              <div className="w-12 h-12 bg-amber-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
+                <Eye className="w-6 h-6 text-amber-600 dark:text-amber-500" strokeWidth={1.5} />
               </div>
               <p className="text-sm font-medium text-foreground">
                 AR Story Overlay
@@ -339,8 +343,8 @@ export default function Index() {
 
             {/* Feature 3 */}
             <div className="flex flex-col items-center text-center">
-              <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mb-3">
-                <Archive className="w-6 h-6 text-amber-600" strokeWidth={1.5} />
+              <div className="w-12 h-12 bg-amber-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
+                <Archive className="w-6 h-6 text-amber-600 dark:text-amber-500" strokeWidth={1.5} />
               </div>
               <p className="text-sm font-medium text-foreground">
                 Community Archive
